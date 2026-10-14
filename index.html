@@ -1,0 +1,994 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Una lontra scivola giù dalla funzione di ripartizione della normale e ti dà un bacino.">
+<title>Un bacino normale</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500..700&display=swap">
+<style>
+/* Layout: una sola scena a tutto schermo, fondo neutro come uno studio fotografico.
+   Sopra la scena: etichette del grafico, l'impronta del bacio sul "vetro" e un bottone per rivederlo. */
+:root {
+  --bg: #f1ece6;        /* fondo e pavimento */
+  --ink: #2c2522;       /* testo */
+  --muted: #84776e;     /* assi ed etichette */
+  --kiss: #e2305f;      /* rossetto */
+  --heart: #ff6b8e;
+  --accent: #2f98a6;    /* lo scivolo */
+  --btn: #fffdfb;
+  --fog: rgba(255, 255, 255, 0.8);   /* il fiato sul vetro */
+  --font-display: "Fredoka", ui-rounded, "Segoe UI", system-ui, sans-serif;
+  --font-math: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #19181c; --ink: #f0e9e4; --muted: #9a8f88; --kiss: #ff4f80; --heart: #ff7a9b; --accent: #4cc3cf; --btn: #2a282e;
+    --fog: rgba(214, 224, 255, 0.2);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #19181c; --ink: #f0e9e4; --muted: #9a8f88; --kiss: #ff4f80; --heart: #ff7a9b; --accent: #4cc3cf; --btn: #2a282e;
+  --fog: rgba(214, 224, 255, 0.2);
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { height: 100%; }
+body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font: 16px/1.4 var(--font-display); }
+
+.stage { position: relative; height: 100%; overflow: hidden; background: var(--bg); }
+#scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: manipulation; }
+.labels, .fx { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.lab {
+  position: absolute; left: 0; top: 0; visibility: hidden; white-space: nowrap;
+  color: var(--muted); font: 500 14px/1 var(--font-display); font-variant-numeric: tabular-nums;
+  transition: opacity 0.25s ease;
+}
+.lab.dietro { opacity: 0; }   /* la lontra ci passa davanti */
+.lab.math { font: italic 19px/1 var(--font-math); color: var(--accent); }
+.lab.math b { font-style: normal; font-weight: 400; }
+
+/* il bacio sul vetro: prima il fiato che appanna, poi l'impronta che resta un po' sbiadita */
+.fiato {
+  --w: clamp(170px, 50vmin, 260px);
+  position: absolute; left: 0; top: 0; width: var(--w); height: calc(var(--w) * 0.65); margin: calc(var(--w) * -0.325) 0 0 calc(var(--w) * -0.5);
+  border-radius: 50%; background: radial-gradient(closest-side, var(--fog), transparent);
+  opacity: 0; animation: fiato 2.2s ease-out forwards;
+}
+@keyframes fiato {
+  0% { opacity: 0; transform: scale(0.55); }
+  9% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.12); }
+}
+.kiss {
+  --w: clamp(88px, 26vmin, 132px);
+  position: absolute; left: 0; top: 0; width: var(--w); height: calc(var(--w) * 0.64); margin: calc(var(--w) * -0.32) 0 0 calc(var(--w) * -0.5);
+  color: var(--kiss); opacity: 0;
+  animation: kiss-pop 4.2s cubic-bezier(.2, .9, .3, 1.2) forwards;
+}
+.kiss svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 1px 0 color-mix(in srgb, var(--kiss) 40%, transparent)); }
+@keyframes kiss-pop {
+  0% { opacity: 0; transform: var(--r) scale(1.6); }
+  7% { opacity: 0.95; transform: var(--r) scale(0.94); }
+  12% { transform: var(--r) scale(1.02); }
+  16% { transform: var(--r) scale(1); }
+  55% { opacity: 0.92; }
+  100% { opacity: 0.6; transform: var(--r) scale(1); }
+}
+.smack {
+  position: absolute; left: 0; top: 0; transform: translate(-50%, -50%);
+  font: 700 clamp(30px, 9.4vmin, 46px)/1 var(--font-display); letter-spacing: 0.02em; color: var(--kiss); white-space: nowrap;
+  text-shadow: 3px 0 var(--bg), -3px 0 var(--bg), 0 3px var(--bg), 0 -3px var(--bg), 2px 2px var(--bg), -2px -2px var(--bg), 2px -2px var(--bg), -2px 2px var(--bg), 0 6px 14px color-mix(in srgb, var(--ink) 18%, transparent);
+  opacity: 0; animation: smack 1.7s cubic-bezier(.2, .9, .3, 1.3) forwards;
+}
+@keyframes smack {
+  0% { opacity: 0; transform: translate(-50%, -50%) rotate(-12deg) scale(0.4); }
+  18% { opacity: 1; transform: translate(-50%, -62%) rotate(-8deg) scale(1.08); }
+  30% { transform: translate(-50%, -64%) rotate(-8deg) scale(1); }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -88%) rotate(-6deg) scale(0.96); }
+}
+.heart {
+  position: absolute; left: 0; top: 0; width: 26px; height: 24px; margin: -12px 0 0 -13px; color: var(--heart);
+  opacity: 0; animation: heart 1.9s ease-out forwards;
+}
+.heart svg { width: 100%; height: 100%; display: block; }
+@keyframes heart {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.4); }
+  15% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1.1) rotate(var(--rot)); }
+}
+
+.again {
+  position: absolute; left: 50%; bottom: max(22px, env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: 8px;
+  border: 0; border-radius: 999px; padding: 12px 20px 13px;
+  background: var(--btn); color: var(--ink); cursor: pointer;
+  font: 600 16px/1 var(--font-display); white-space: nowrap;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--ink) 18%, transparent), 0 8px 24px color-mix(in srgb, var(--ink) 10%, transparent);
+  animation: fade-in 0.5s ease-out backwards;
+}
+.again svg { width: 18px; height: 16px; color: var(--kiss); }
+.again:hover { transform: translateX(-50%) translateY(-1px); }
+.again:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+@keyframes fade-in { from { opacity: 0; transform: translateX(-50%) translateY(8px); } to { opacity: 1; transform: translateX(-50%); } }
+
+.overlay { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; }
+.overlay p { margin: 0; max-width: 30ch; font: 500 18px/1.4 var(--font-display); color: var(--muted); }
+
+@media (max-width: 520px) {
+  .lab { font-size: 12px; }
+  .lab.math { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kiss { animation: none; opacity: 0.9; transform: var(--r); }
+  .smack { animation: none; opacity: 1; transform: translate(-50%, -64%) rotate(-8deg); }
+  .heart, .fiato { display: none; }
+  .again { animation: none; }
+}
+</style>
+</head>
+<body>
+<main class="stage" id="stage">
+  <canvas id="scene" role="img" aria-label="Una lontra scivola giù dalla funzione di ripartizione della normale, corre verso lo schermo e ti dà un bacino."></canvas>
+  <div class="labels" id="labels" aria-hidden="true"></div>
+  <div class="fx" id="fx" aria-hidden="true"></div>
+  <div class="overlay" id="loading"><p>Una lontra sta arrivando…</p></div>
+  <div class="overlay" id="error" hidden><p id="error-text">La lontra non è riuscita a partire.</p></div>
+  <button class="again" id="again" type="button" hidden>
+    <svg viewBox="0 0 24 22" aria-hidden="true"><path fill="currentColor" d="M12 21s-8.5-5.3-10.6-10.1C-.3 6.9 2.2 2 6.6 2c2.3 0 4 1.3 5.4 3.1C13.4 3.3 15.1 2 17.4 2c4.4 0 6.9 4.9 5.2 8.9C20.5 15.7 12 21 12 21z"/></svg>
+    Un altro bacino
+  </button>
+</main>
+
+<script type="module">
+/* ============================================================================
+   UN BACINO NORMALE
+   Una lontra scivola giù dalla funzione di ripartizione della normale standard,
+   corre verso lo schermo e lascia un bacio sul vetro.
+
+   Cosa si può cambiare facilmente:
+     COLORI della lontra ......... sezione "Lontra", oggetto PELO
+     altezza della curva ......... HC (la larghezza si adatta allo schermo: scalaPer)
+     tempi dell'animazione ....... sezione "Regia", campo d di ogni fase
+     scritta del bacio ........... costante SCRITTA qui sotto
+   ============================================================================ */
+const SCRITTA = 'Smack!';
+const THREE_URL = 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js';
+
+/* ---------------- matematica ---------------- */
+function erf(x) {
+  const s = x < 0 ? -1 : 1, ax = Math.abs(x), t = 1 / (1 + 0.3275911 * ax);
+  return s * (1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-ax * ax));
+}
+const Phi = (z) => 0.5 * (1 + erf(z / Math.SQRT2));       // funzione di ripartizione
+const phi = (z) => Math.exp(-z * z / 2) / Math.sqrt(2 * Math.PI); // densità
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+const easeOutBack = (t) => { const c = 1.70158; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+
+/* ---------------- lo scivolo: y = Y0 + HC · Φ(x / S) ---------------- */
+const HC = 3.4;              // altezza: Φ = 1 in cima
+const Y0 = 0.07;             // lo scivolo sta un filo sopra il pavimento
+let S = 1.35;                // larghezza di una deviazione standard, in metri finti
+let X_MIN = 0, X_MAX = 0, X_TOP = 0, X_STOP = 0, AX = 0;
+function impostaScala(s) {
+  S = s;
+  X_MIN = -3.3 * S - (1.35 - S) * 0.4;   // fondo dello scivolo, a sinistra
+  X_MAX = 3.45 * S + (1.35 - S) * 0.5;   // cima, a destra
+  X_TOP = X_MAX - 0.7;                   // dove parte la lontra
+  X_STOP = X_MIN + 0.95;                 // dove si ferma: sulla coda sinistra della curva
+  AX = X_MIN - 0.45;                     // asse verticale del grafico
+}
+// sui telefoni in verticale il grafico si stringe, così lontra e scivolo restano grandi
+const scalaPer = (aspect) => clamp(0.45 + 0.6 * aspect, 0.74, 1.35);
+const curvaY = (xw) => Y0 + HC * Phi(xw / S);
+const pendenza = (xw) => (HC * phi(xw / S)) / S;
+const reduce = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+function mostraErrore(t) {
+  document.getElementById('loading').hidden = true;
+  document.getElementById('error').hidden = false;
+  document.getElementById('error-text').textContent = t;
+}
+
+function avvia(THREE) {
+  const stage = document.getElementById('stage');
+  const canvas = document.getElementById('scene');
+  const dpr0 = window.devicePixelRatio || 1;
+  let renderer;
+  try { renderer = new THREE.WebGLRenderer({ canvas, antialias: dpr0 < 2 }); }
+  catch (e) { mostraErrore('Questo browser non riesce a mostrare la grafica 3D.'); return; }
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(30, 1, 0.03, 200);
+  const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+  const ASSE_Z = V3(0, 0, 1);
+  {
+    const r = stage.getBoundingClientRect();
+    impostaScala(scalaPer(Math.max(1, r.width) / Math.max(1, r.height)));
+  }
+
+  /* ---------------- tema ---------------- */
+  const css = () => getComputedStyle(document.documentElement);
+  const TEMI = {
+    chiaro: { hemiSky: '#fffaf2', hemiGround: '#cbb9a6', hemi: 1.55, key: '#fff0df', keyI: 2.5, rim: '#dcecff', rimI: 1.3, pillar: '#d8cfc5', under: 0.72, shadow: 0.30 },
+    scuro: { hemiSky: '#8d96c4', hemiGround: '#2a2524', hemi: 1.05, key: '#ffe8d2', keyI: 2.2, rim: '#9ec8ff', rimI: 1.9, pillar: '#4a454c', under: 0.55, shadow: 0.55 },
+  };
+
+  /* ---------------- luci ---------------- */
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x888888, 1.5);
+  const key = new THREE.DirectionalLight(0xffffff, 2.5);
+  key.position.set(-4, 7, 8);
+  const rim = new THREE.DirectionalLight(0xffffff, 1.3);
+  rim.position.set(5, 4, -6);
+  scene.add(hemi, key, rim);
+
+  /* ---------------- pavimento e ombre morbide ---------------- */
+  const blobCanvas = document.createElement('canvas');
+  blobCanvas.width = blobCanvas.height = 128;
+  {
+    const g = blobCanvas.getContext('2d');
+    const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(0.45, 'rgba(0,0,0,0.55)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+  }
+  const blobTex = new THREE.CanvasTexture(blobCanvas);
+  const matFloor = new THREE.MeshBasicMaterial({ color: 0xf1ece6 });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), matFloor);
+  floor.rotation.x = -Math.PI / 2;
+  scene.add(floor);
+  const blob = (op) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false, opacity: op, color: 0x000000 }));
+    m.rotation.x = -Math.PI / 2;
+    m.renderOrder = 1;
+    return m;
+  };
+  const slideShadow = blob(0.3);
+  scene.add(slideShadow);
+
+  /* ---------------- grafico: scivolo a forma di Φ e assi leggeri ---------------- */
+  const matSlide = new THREE.MeshStandardMaterial({ color: 0x2f98a6, roughness: 0.32, metalness: 0, side: THREE.DoubleSide });
+  const matUnder = new THREE.MeshStandardMaterial({ color: 0x2f98a6, roughness: 0.6, metalness: 0 });
+  const matRail = new THREE.MeshStandardMaterial({ color: 0x2f98a6, roughness: 0.25, metalness: 0 });
+  const matPillar = new THREE.MeshStandardMaterial({ color: 0xd8cfc5, roughness: 0.8 });
+  const matAxis = new THREE.MeshBasicMaterial({ color: 0x84776e });
+  const matDash = new THREE.LineDashedMaterial({ color: 0x84776e, dashSize: 0.14, gapSize: 0.12 });
+  const tang = (xw) => { const s = pendenza(xw); const l = Math.hypot(1, s); return [1 / l, s / l]; };
+  const AZ = -0.85;
+  const LAB = { uno: V3(0, 0, 0), zero: V3(0, 0, 0), x: V3(0, 0, 0), phi: V3(0, 0, 0) };
+  const bordi = [];                         // punti che la camera deve sempre vedere
+  const grafico = new THREE.Group();
+  scene.add(grafico);
+  function costruisciGrafico() {
+    for (const c of [...grafico.children]) { c.geometry.dispose(); grafico.remove(c); }
+    // superficie a U spazzata lungo la curva
+    const NX = 200;
+    const prof = [[-0.62, 0.17], [-0.52, 0.06], [-0.34, 0.012], [0, 0], [0.34, 0.012], [0.52, 0.06], [0.62, 0.17]];
+    const NP = prof.length;
+    const top = [], bot = [];
+    for (let i = 0; i <= NX; i++) {
+      const xw = lerp(X_MIN, X_MAX, i / NX);
+      const y = curvaY(xw);
+      const [tx, ty] = tang(xw);
+      const nx = -ty, ny = tx;
+      for (const [z, h] of prof) {
+        top.push(xw + nx * h, y + ny * h, z);
+        bot.push(xw + nx * (h - 0.075), y + ny * (h - 0.075), z);
+      }
+    }
+    const mk = (arr, flip) => {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
+      const idx = [];
+      for (let i = 0; i < NX; i++) for (let j = 0; j < NP - 1; j++) {
+        const a = i * NP + j, b = a + 1, c = a + NP, d = c + 1;
+        if (flip) idx.push(a, c, b, b, c, d); else idx.push(a, b, c, b, d, c);
+      }
+      g.setIndex(idx); g.computeVertexNormals();
+      return g;
+    };
+    grafico.add(new THREE.Mesh(mk(top, false), matSlide));
+    grafico.add(new THREE.Mesh(mk(bot, true), matUnder));
+    // bordi tondi, con i tappi alle estremità
+    for (const side of [-1, 1]) {
+      const pts = [];
+      for (let i = 0; i <= 120; i++) {
+        const xw = lerp(X_MIN, X_MAX, i / 120);
+        const [tx, ty] = tang(xw);
+        pts.push(V3(xw - ty * 0.17, curvaY(xw) + tx * 0.17, side * 0.63));
+      }
+      grafico.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 240, 0.05, 8, false), matRail));
+      for (const p of [pts[0], pts[pts.length - 1]]) {
+        const cap = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 8), matRail);
+        cap.position.copy(p); grafico.add(cap);
+      }
+    }
+    // pilastri
+    const xs = [-1.4, -0.45, 0.55, 1.55, 2.55].map((z) => z * S).filter((x) => x < X_MAX - 0.55);
+    xs.push(X_MAX - 0.2);
+    for (const xw of xs) {
+      const h = curvaY(xw) - 0.09;
+      if (h < 0.25) continue;
+      for (const z of [-0.42, 0.42]) {
+        const p = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, h, 12), matPillar);
+        p.position.set(xw, h / 2, z);
+        grafico.add(p);
+      }
+    }
+    // assi
+    const linea = (x0, y0, x1, y1, w = 0.022) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(Math.max(w, Math.abs(x1 - x0)), Math.max(w, Math.abs(y1 - y0)), w), matAxis);
+      m.position.set((x0 + x1) / 2, (y0 + y1) / 2, AZ);
+      grafico.add(m);
+    };
+    linea(AX, 0.01, AX, Y0 + HC + 0.45);                 // asse verticale
+    linea(AX, 0.012, X_MAX + 0.7, 0.012);                // asse orizzontale, sul pavimento
+    linea(AX - 0.14, Y0 + HC, AX, Y0 + HC);              // tacca a 1
+    linea(AX - 0.14, Y0, AX, Y0);                        // tacca a 0
+    const dash = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V3(AX, Y0 + HC, AZ), V3(X_MAX + 0.4, Y0 + HC, AZ)]), matDash);
+    dash.computeLineDistances();
+    grafico.add(dash);
+    slideShadow.scale.set(X_MAX - X_MIN + 1.6, 2.6, 1);
+    slideShadow.position.set((X_MAX + X_MIN) / 2 + 0.2, 0.004, -0.1);
+    // etichette: Φ(x) alla fine della curva, come nei grafici; il centro resta libero per il bacio
+    LAB.uno.set(AX - 0.14, Y0 + HC, AZ);
+    LAB.zero.set(AX - 0.14, Y0, AZ);
+    LAB.x.set(X_MAX + 0.7, 0.012, AZ);
+    LAB.phi.set(X_MAX + 0.06, Y0 + HC + 0.3, 0.68);     // sul piano del bordo davanti, così la prospettiva non lo sovrappone
+    bordi.length = 0;
+    for (const z of [-0.9, 0.7]) for (const [x, y] of [[AX - 0.62, -0.05], [X_MAX + 1.05, -0.05], [AX - 0.62, Y0 + HC + 1.75], [X_MAX + 1.05, Y0 + HC + 1.75]]) bordi.push(V3(x, y, z));
+  }
+  costruisciGrafico();
+
+  /* ---------------- lontra ---------------- */
+  const PELO = { pelo: '#7d5236', scuro: '#553521', crema: '#ecd5b2', cuscinetti: '#f4e4cb', naso: '#2a1d18', occhi: '#130f0e', labbra: '#ff6c8b', bocca: '#6b1d33', guance: '#ff8fa9', baffi: '#f6efe6' };
+  const std = (c, r = 0.9) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: 0 });
+  const M = {
+    pelo: std(PELO.pelo), scuro: std(PELO.scuro), crema: std(PELO.crema), cusc: std(PELO.cuscinetti, 0.85),
+    naso: std(PELO.naso, 0.32), occhi: std(PELO.occhi, 0.14), labbra: std(PELO.labbra, 0.45), bocca: std(PELO.bocca, 0.7), baffi: std(PELO.baffi, 0.6),
+    bianco: new THREE.MeshBasicMaterial({ color: 0xffffff }),
+    guance: new THREE.MeshBasicMaterial({ color: PELO.guance, transparent: true, opacity: 0, depthWrite: false }),
+  };
+  const ellissoide = (rx, ry, rz, mat, x, y, z, seg = 28) => {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(1, seg, Math.round(seg * 0.75)), mat);
+    m.scale.set(rx, ry, rz); m.position.set(x, y, z);
+    return m;
+  };
+  const root = new THREE.Group();
+  const rig = new THREE.Group();            // squash e respiro
+  root.add(rig);
+  scene.add(root);
+  const corpo = new THREE.Mesh(new THREE.CapsuleGeometry(0.38, 0.5, 10, 28), M.pelo);
+  corpo.position.y = 0.63; corpo.scale.z = 0.94;
+  rig.add(corpo);
+  rig.add(ellissoide(0.3, 0.43, 0.2, M.crema, 0, 0.56, 0.235));
+  for (const sx of [-1, 1]) rig.add(ellissoide(0.12, 0.07, 0.17, M.scuro, sx * 0.19, 0.06, 0.2, 18));
+  // testa
+  const testa = new THREE.Group();
+  testa.position.set(0, 1.1, 0.02);
+  rig.add(testa);
+  testa.add(ellissoide(0.4, 0.36, 0.37, M.pelo, 0, 0.27, 0, 40));
+  testa.add(ellissoide(0.29, 0.21, 0.22, M.crema, 0, 0.16, 0.18, 32));
+  for (const sx of [-1, 1]) testa.add(ellissoide(0.115, 0.115, 0.115, M.cusc, sx * 0.085, 0.14, 0.31, 24));
+  testa.add(ellissoide(0.09, 0.08, 0.08, M.crema, 0, 0.05, 0.27, 20));
+  testa.add(ellissoide(0.075, 0.055, 0.05, M.naso, 0, 0.235, 0.405, 24));
+  testa.add(ellissoide(0.022, 0.014, 0.01, M.bianco, -0.022, 0.255, 0.448, 10));
+  const bocca = [];
+  for (const sx of [-1, 1]) {
+    const m = new THREE.Mesh(new THREE.TorusGeometry(0.032, 0.0085, 6, 16, Math.PI), M.naso);
+    m.rotation.z = Math.PI; m.position.set(sx * 0.033, 0.14, 0.427);
+    testa.add(m); bocca.push(m);
+  }
+  // bocca a bacino: un cuscinetto rosa quasi chiuso, con una fossetta scura al centro
+  const labbra = new THREE.Group();
+  labbra.add(new THREE.Mesh(new THREE.TorusGeometry(0.031, 0.025, 12, 26), M.labbra));
+  labbra.add(ellissoide(0.011, 0.008, 0.006, M.bocca, 0, 0, 0.004, 10));
+  labbra.position.set(0, 0.125, 0.43);
+  labbra.scale.setScalar(0.001);
+  testa.add(labbra);
+  const occhi = [], felici = [], chiusi = [], luci = [];
+  for (const sx of [-1, 1]) {
+    const e = ellissoide(0.062, 0.07, 0.05, M.occhi, sx * 0.165, 0.33, 0.29, 22);
+    testa.add(e); occhi.push(e);
+    const l = ellissoide(0.019, 0.019, 0.012, M.bianco, sx * 0.165 - 0.02, 0.36, 0.335, 10);
+    testa.add(l); luci.push(l);
+    // occhi felici ∩ e occhi chiusi ∪
+    const f = new THREE.Mesh(new THREE.TorusGeometry(0.048, 0.013, 6, 16, Math.PI), M.occhi);
+    f.position.set(sx * 0.165, 0.31, 0.33); f.scale.setScalar(0.001);
+    testa.add(f); felici.push(f);
+    const c = new THREE.Mesh(new THREE.TorusGeometry(0.046, 0.012, 6, 16, Math.PI), M.occhi);
+    c.rotation.z = Math.PI; c.position.set(sx * 0.165, 0.352, 0.33); c.scale.setScalar(0.001);
+    testa.add(c); chiusi.push(c);
+    testa.add(ellissoide(0.075, 0.065, 0.05, M.scuro, sx * 0.29, 0.5, -0.02, 16));
+    const g = new THREE.Mesh(new THREE.CircleGeometry(0.075, 24), M.guance);
+    g.position.set(sx * 0.27, 0.185, 0.305); g.rotation.y = sx * 0.62;
+    testa.add(g);
+    for (let k = 0; k < 3; k++) {
+      const w = new THREE.Mesh(new THREE.CylinderGeometry(0.0055, 0.0035, 0.34, 5), M.baffi);
+      const piv = new THREE.Group();
+      piv.position.set(sx * 0.16, 0.15 + k * 0.026, 0.36);
+      w.position.y = 0.17;
+      piv.add(w);
+      piv.rotation.set(0, sx * 0.4, -sx * (Math.PI / 2 + (k - 1) * 0.16));
+      testa.add(piv);
+    }
+  }
+  // braccia
+  const braccia = [];
+  for (const sx of [-1, 1]) {
+    const spalla = new THREE.Group();
+    spalla.position.set(sx * 0.3, 0.93, 0.14);
+    const b = new THREE.Mesh(new THREE.CapsuleGeometry(0.085, 0.22, 6, 14), M.pelo);
+    b.position.y = -0.18;
+    spalla.add(b);
+    spalla.add(ellissoide(0.1, 0.085, 0.09, M.scuro, 0, -0.34, 0.01, 18));
+    rig.add(spalla);
+    braccia.push(spalla);
+  }
+  // coda
+  const codaRad = new THREE.Group();
+  codaRad.position.set(0, 0.18, -0.3);
+  const codaInc = new THREE.Group();
+  codaRad.add(codaInc);
+  const coda = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.12, 0.72, 16), M.pelo);
+  coda.position.y = 0.36;
+  codaInc.add(coda);
+  codaInc.add(ellissoide(0.047, 0.05, 0.047, M.pelo, 0, 0.72, 0, 12));
+  rig.add(codaRad);
+  const ombra = blob(0.32);
+  scene.add(ombra);
+  // tre cerchi che coprono la lontra: servono a nascondere le etichette quando le passa davanti
+  const coperture = [[testa, 0.27, 0.5], [rig, 0.9, 0.44], [rig, 0.36, 0.44]].map(([padre, y, r]) => {
+    const o = new THREE.Object3D(); o.position.y = y; padre.add(o); return { o, r };
+  });
+
+  /* ---------------- etichette del grafico ---------------- */
+  const labels = document.getElementById('labels');
+  const etichette = [];
+  // ancora: 'd' = l'etichetta sta a sinistra del punto, 's' = a destra; ox = distacco in pixel
+  const SPOSTA = { d: '-100%', s: '0%' };
+  const etichetta = (html, cls, p, r, ancora, ox) => {
+    const d = document.createElement('div');
+    d.className = 'lab ' + (cls || '');
+    d.innerHTML = html;
+    labels.append(d);
+    etichette.push({ d, p, r, ox, dx: ancora === 'd' ? -r : r, tx: SPOSTA[ancora], coperta: false });
+  };
+  etichetta('1', '', LAB.uno, 8, 'd', -6);
+  etichetta('0', '', LAB.zero, 8, 'd', -6);
+  etichetta('x', '', LAB.x, 6, 's', 6);
+  etichetta('Φ<b>(</b>x<b>)</b>', 'math', LAB.phi, 22, 's', 9);
+  const proj = new THREE.Vector3(), _w = new THREE.Vector3();
+  const cerchi = [];
+  function aggiornaEtichette(w, h) {
+    const tv = Math.tan((camera.fov * Math.PI) / 360);
+    cerchi.length = 0;
+    for (const c of coperture) {
+      c.o.getWorldPosition(_w);
+      const d = _w.distanceTo(camera.position);
+      _w.project(camera);
+      if (_w.z > 1 || d < 0.05) continue;
+      cerchi.push((_w.x * 0.5 + 0.5) * w, (-_w.y * 0.5 + 0.5) * h, ((c.r * Math.max(0.001, st.scale)) / (d * tv)) * (h / 2));
+    }
+    for (const e of etichette) {
+      proj.copy(e.p).project(camera);
+      const vis = proj.z < 1 && Math.abs(proj.x) < 1.02 && Math.abs(proj.y) < 1.02;
+      e.d.style.visibility = vis ? 'visible' : 'hidden';
+      if (!vis) continue;
+      const x = (proj.x * 0.5 + 0.5) * w + e.ox, y = (-proj.y * 0.5 + 0.5) * h;
+      e.d.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(${e.tx}, -50%)`;
+      let coperta = false;
+      for (let i = 0; i < cerchi.length && !coperta; i += 3) coperta = Math.hypot(x + e.dx - cerchi[i], y - cerchi[i + 1]) < cerchi[i + 2] + e.r;
+      if (coperta !== e.coperta) { e.coperta = coperta; e.d.classList.toggle('dietro', coperta); }
+    }
+  }
+
+  /* ---------------- tema ---------------- */
+  let temaAttivo = '';
+  function applicaTema() {
+    const t = document.documentElement.getAttribute('data-theme');
+    const dark = t === 'dark' || (t !== 'light' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+    const nome = dark ? 'scuro' : 'chiaro';
+    if (nome === temaAttivo) return;
+    temaAttivo = nome;
+    const p = TEMI[nome], c = css();
+    const bg = c.getPropertyValue('--bg').trim() || '#f1ece6';
+    const acc = c.getPropertyValue('--accent').trim() || '#2f98a6';
+    const muted = c.getPropertyValue('--muted').trim() || '#84776e';
+    scene.background = new THREE.Color(bg);
+    matFloor.color.set(bg);
+    matSlide.color.set(acc); matRail.color.set(acc);
+    matUnder.color.set(acc).multiplyScalar(p.under);
+    matPillar.color.set(p.pillar);
+    matAxis.color.set(muted); matDash.color.set(muted);
+    hemi.color.set(p.hemiSky); hemi.groundColor.set(p.hemiGround); hemi.intensity = p.hemi;
+    key.color.set(p.key); key.intensity = p.keyI;
+    rim.color.set(p.rim); rim.intensity = p.rimI;
+    slideShadow.material.opacity = p.shadow * 0.9;
+    ombra.material.opacity = p.shadow;
+  }
+  applicaTema();
+  if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applicaTema);
+  new MutationObserver(applicaTema).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  /* ---------------- camera: inquadra il grafico, poi la lontra viene verso di te ---------------- */
+  const cam = { x: 0, y: 1.55, z: 14, ty: 2.45 };
+  function inquadra(w, h) {
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    cam.x = (AX - 0.62 + X_MAX + 1.05) / 2;
+    let a = 4, b = 120;
+    for (let k = 0; k < 30; k++) {
+      const m = (a + b) / 2;
+      camera.position.set(cam.x, cam.y, m); camera.lookAt(cam.x, cam.ty, 0); camera.updateMatrixWorld();
+      let fuori = false;
+      for (const p of bordi) { proj.copy(p).project(camera); if (Math.abs(proj.x) > 0.93 || Math.abs(proj.y) > 0.88) { fuori = true; break; } }
+      if (fuori) a = m; else b = m;
+    }
+    cam.z = b;
+    camera.position.set(cam.x, cam.y, cam.z); camera.lookAt(cam.x, cam.ty, 0); camera.updateMatrixWorld();
+  }
+  const _k = new THREE.Vector3(), _r = new THREE.Vector3();
+  // distanza a cui la testa occupa circa un terzo dello schermo, e quella del bacio sul vetro
+  function distanze() {
+    const tv = Math.tan((camera.fov * Math.PI) / 360);
+    const tmin = Math.min(tv, tv * camera.aspect);
+    return { vicino: 0.4 / (0.34 * tmin), vetro: 0.4 / (0.95 * tmin) - 0.43 };
+  }
+  // raggio dalla camera attraverso un punto dello schermo (coordinate da −1 a 1)
+  const raggio = (xn, yn) => _r.set(xn, yn, 0.5).unproject(camera).sub(camera.position).normalize();
+  const sulRaggio = (xn, yn, d, out) => { raggio(xn, yn); return out.copy(camera.position).addScaledVector(_r, d); };
+  function sulPavimento(xn, yn, out) {
+    raggio(xn, yn);
+    const t = camera.position.y / Math.max(0.02, -_r.y);
+    return out.copy(camera.position).addScaledVector(_r, t).setY(0);
+  }
+  // in verticale il bacio cade un po' più in alto, così la lontra dopo non lo copre
+  const bacioY = () => 0.3 * (1 - smooth(0.55, 1.0, camera.aspect));
+  function postoBacio(out) {
+    sulRaggio(0, 0, distanze().vicino, _k);
+    return out.set(_k.x, 0, _k.z);
+  }
+  // dove si mette alla fine: tutta intera, di lato rispetto all'impronta sul vetro
+  function postoFinale(out) {
+    const a = camera.aspect;
+    return sulPavimento(-0.42 * smooth(0.55, 1.15, a), lerp(-0.72, -0.86, smooth(0.7, 1.4, a)), out);
+  }
+  const versoCamera = (p) => Math.atan2(camera.position.x - p.x, camera.position.z - p.z);
+
+  /* ---------------- posa ---------------- */
+  const st = {
+    pos: V3(X_TOP, curvaY(X_TOP), 0), yaw: 0, lying: 0, xc: X_TOP, modo: 'giu', lean: 0, hopY: 0, squash: 0,
+    armFwd: 0, wave: 0, crawl: 0, eyes: 1, happy: 0, pucker: 0, blush: 0, tilt: 0, look: 0, wag: 1, scale: 1,
+  };
+  let s0 = null;
+
+  /* ---------------- dimensioni e risoluzione ---------------- */
+  let W0 = 0, H0 = 0;
+  // se cambia la forma dello schermo si ricostruisce il grafico, e la lontra resta al suo posto sulla curva
+  function riscala(s) {
+    const r = s / S;
+    for (const o of [st, s0]) {
+      if (!o) continue;
+      o.xc *= r;
+      if (Math.abs(o.pos.z) < 1) o.pos.x *= r;
+    }
+    impostaScala(s);
+    costruisciGrafico();
+  }
+  function dimensiona() {
+    const r = stage.getBoundingClientRect();
+    const w = Math.max(1, Math.round(r.width)), h = Math.max(1, Math.round(r.height));
+    if (w === W0 && h === H0) return;
+    W0 = w; H0 = h;
+    const s = scalaPer(w / h);
+    if (Math.abs(s - S) > 0.01) riscala(s);
+    const piccolo = Math.min(w, h) < 560;
+    const dpr = Math.min(dpr0, piccolo ? 1.75 : 2, Math.sqrt(3.2e6 / (w * h)));
+    renderer.setPixelRatio(dpr);
+    renderer.setSize(w, h, false);
+    inquadra(w, h);
+  }
+  new ResizeObserver(dimensiona).observe(stage);
+  dimensiona();
+
+  const sup = (xw, out = new THREE.Vector3()) => {
+    if (xw >= X_MIN) return out.set(xw, curvaY(xw), 0);
+    const y = curvaY(X_MIN) * smooth(X_MIN - 0.45, X_MIN, xw);
+    return out.set(xw, y, 0);
+  };
+  const tangente = (xw) => (xw >= X_MIN ? tang(xw) : [1, 0]);
+  const qUp = new THREE.Quaternion(), qLie = new THREE.Quaternion(), mBasis = new THREE.Matrix4();
+  const ex = new THREE.Vector3(), ey = new THREE.Vector3(), ez = new THREE.Vector3();
+  const pLie = new THREE.Vector3(), pSup = new THREE.Vector3(), pCoda = new THREE.Vector3(), eul = new THREE.Euler(0, 0, 0, 'YXZ');
+  let blinkT = 2.2, blinkOn = 0, clock = 0;
+  function applicaPosa(dt) {
+    // orientamento: in piedi (yaw, inclinazione) oppure sdraiata lungo lo scivolo
+    eul.set(st.lean, st.yaw, st.tilt * 0.4, 'YXZ');
+    qUp.setFromEuler(eul);
+    const lie = ease(clamp(st.lying, 0, 1));
+    let origin = st.pos;
+    if (lie > 0.0001) {
+      const [tx, ty] = tangente(st.xc);
+      const giu = st.modo === 'giu' ? -1 : 1;
+      ey.set(tx * giu, ty * giu, 0);              // la testa va avanti
+      ez.set(ty, -tx, 0);                         // la pancia appoggiata
+      ex.crossVectors(ey, ez);
+      mBasis.makeBasis(ex, ey, ez);
+      qLie.setFromRotationMatrix(mBasis);
+      sup(st.xc, pSup);
+      pLie.copy(pSup).add(_k.set(-ty * 0.4, tx * 0.4, 0)).addScaledVector(ey, -0.63);
+      qUp.slerp(qLie, lie);
+      origin = pLie.lerp(st.pos, 1 - lie);
+    }
+    root.quaternion.copy(qUp);
+    root.position.copy(origin);
+    root.position.y += st.hopY;
+    const br = 1 + Math.sin(clock * 1.8) * 0.012;
+    const sca = Math.max(0.001, st.scale);
+    rig.scale.set(sca * (1 + st.squash * 0.55), sca * (1 - st.squash) * br, sca * (1 + st.squash * 0.55));
+    // testa e faccia
+    const giro = lie * (st.modo === 'giu' ? 0.75 : -0.75);
+    testa.rotation.set(-lerp(st.look, 1.25, lie), giro, st.tilt);
+    blinkT -= dt;
+    if (blinkT <= 0) { blinkOn = 0.13; blinkT = 2.4 + Math.random() * 3.2; }
+    if (blinkOn > 0) blinkOn -= dt;
+    const chiuso = 1 - clamp(st.eyes, 0, 1), felice = clamp(st.happy, 0, 1);
+    const apertura = (1 - chiuso) * (1 - felice);
+    const blink = blinkOn > 0 ? 0.08 : 1;
+    for (const e of occhi) {
+      const v = apertura > 0.03 ? 1 : 0.001;
+      e.scale.set(0.062 * v, 0.07 * Math.max(0.06, apertura * blink) * v, 0.05 * v);
+    }
+    for (const l of luci) l.visible = apertura * blink > 0.5;
+    for (const f of felici) f.scale.setScalar(Math.max(0.001, felice));
+    for (const c of chiusi) c.scale.setScalar(Math.max(0.001, chiuso * (1 - felice)));
+    const pk = Math.max(0.001, st.pucker);
+    labbra.scale.set(pk, pk * 0.88, pk);
+    labbra.position.z = 0.43 + st.pucker * 0.03;
+    for (const b of bocca) b.scale.setScalar(Math.max(0.001, 1 - st.pucker));
+    M.guance.opacity = 0.8 * st.blush;
+    // braccia: al petto, in avanti, a gattoni, saluto
+    const cr = Math.sin(st.crawl) * 0.65;
+    const base = lerp(-0.95, -2.95, st.armFwd);
+    braccia[0].rotation.set(base - cr, 0, lerp(0.38, 0.1, st.armFwd));
+    braccia[1].rotation.set(base + cr, 0, lerp(-0.38, -0.1, st.armFwd));
+    if (st.wave > 0) {
+      // braccio alzato e aperto verso l'esterno, la zampa che oscilla
+      braccia[1].rotation.x = lerp(braccia[1].rotation.x, -2.9, st.wave);
+      braccia[1].rotation.z = lerp(braccia[1].rotation.z, 0.5 + Math.sin(clock * 11) * 0.38, st.wave);
+    }
+    // coda: in piedi appoggiata dietro; sdraiata, adagiata sullo scivolo
+    codaRad.position.set(0, lerp(0.18, 0.1, lie), lerp(-0.3, -0.12, lie));
+    codaRad.rotation.y = Math.sin(clock * 3.3) * 0.3 * st.wag;
+    let incl = -1.82;
+    if (lie > 0.001) {
+      root.updateMatrixWorld(true);
+      const dietro = st.modo === 'giu' ? 1 : -1;
+      const t0 = tangente(st.xc)[0], t1 = tangente(st.xc + dietro * 1.2 * t0)[0];
+      const xb = st.xc + dietro * 1.25 * (t0 + t1) / 2;
+      sup(xb, pCoda);
+      const [tbx, tby] = tangente(xb);
+      pCoda.x -= tby * 0.06; pCoda.y += tbx * 0.06;
+      rig.worldToLocal(pCoda);
+      let a = Math.atan2(pCoda.z - codaRad.position.z, pCoda.y - codaRad.position.y);
+      if (a > 0) a -= Math.PI * 2;
+      incl = lerp(-1.82, a, lie);
+    }
+    codaInc.rotation.x = incl;
+    // ombra sotto la lontra: sullo scivolo se ci sta sopra, altrimenti sul pavimento
+    const cx = lie > 0.5 ? st.xc : root.position.x;
+    const cz = lie > 0.5 ? 0 : root.position.z;
+    let baseY = 0;
+    ombra.rotation.set(-Math.PI / 2, 0, 0);
+    if (Math.abs(cz) < 0.6 && cx > X_MIN - 0.05 && cx < X_MAX + 0.05) {
+      sup(cx, pSup); baseY = pSup.y;
+      const [tx, ty] = tangente(cx);
+      ombra.position.set(pSup.x - ty * 0.03, pSup.y + tx * 0.03, cz);
+      ombra.rotateOnWorldAxis(ASSE_Z, Math.atan2(ty, tx));
+    } else {
+      ombra.position.set(root.position.x, 0.006, root.position.z);
+    }
+    const alto = clamp(st.hopY + (lie < 0.5 ? Math.max(0, st.pos.y - baseY) : 0), 0, 2);
+    const sc = (1 - alto * 0.35) * st.scale;
+    ombra.scale.set(lerp(1.0, 1.55, lie) * sc, lerp(0.9, 0.75, lie) * sc, 1);
+    ombra.material.opacity = TEMI[temaAttivo].shadow * (1 - alto * 0.45);
+  }
+
+  /* ---------------- il bacio sul vetro ---------------- */
+  const fx = document.getElementById('fx');
+  const HEART = '<svg viewBox="0 0 24 22"><path fill="currentColor" d="M12 21s-8.5-5.3-10.6-10.1C-.3 6.9 2.2 2 6.6 2c2.3 0 4 1.3 5.4 3.1C13.4 3.3 15.1 2 17.4 2c4.4 0 6.9 4.9 5.2 8.9C20.5 15.7 12 21 12 21z"/></svg>';
+  const LIPS = `<svg viewBox="0 0 200 128"><g fill="currentColor">
+    <path d="M8 62 C 32 40, 58 18, 82 22 C 92 24, 97 30, 100 36 C 103 30, 108 24, 118 22 C 142 18, 168 40, 192 62 C 168 60, 140 62, 120 63 C 112 62, 106 64, 100 65 C 94 64, 88 62, 80 63 C 60 62, 32 60, 8 62 Z"/>
+    <path d="M8 66 C 34 66, 60 69, 80 70 C 88 70, 94 71, 100 71 C 106 71, 112 70, 120 70 C 140 69, 166 66, 192 66 C 172 96, 140 118, 100 118 C 60 118, 28 96, 8 66 Z"/></g>
+    <g fill="none" stroke="#fff" stroke-opacity="0.32" stroke-width="2.4" stroke-linecap="round">
+    <path d="M52 38 l4 18 M70 28 l2 24 M88 30 l1 22 M112 30 l-1 22 M130 28 l-2 24 M148 38 l-4 18"/>
+    <path d="M46 78 l6 22 M66 80 l3 28 M86 82 l1 30 M114 82 l-1 30 M134 80 l-3 28 M154 78 l-6 22"/></g></svg>`;
+  // gli effetti seguono l'orologio dell'animazione: spariscono quando è il loro momento
+  const effetti = [];
+  const effetto = (cls, html, x, y, durata) => {
+    const el = document.createElement('div');
+    el.className = cls;
+    if (html) el.innerHTML = html;
+    el.style.left = ((x / W0) * 100).toFixed(2) + '%';
+    el.style.top = ((y / H0) * 100).toFixed(2) + '%';
+    fx.append(el);
+    effetti.push({ el, t0: clock, durata });
+    return el;
+  };
+  function aggiornaEffetti(sincronizza) {
+    for (let i = effetti.length - 1; i >= 0; i--) {
+      const e = effetti[i];
+      if (!e.el.isConnected || clock - e.t0 > e.durata) { e.el.remove(); effetti.splice(i, 1); continue; }
+      // nelle prove il tempo è simulato: anche le animazioni CSS seguono lo stesso orologio
+      if (sincronizza) for (const a of e.el.getAnimations()) if (a.animationName) { a.pause(); a.currentTime = (clock - e.t0) * 1000; }
+    }
+  }
+  // l'impronta resta sul vetro, un po' sbiadita; si pulisce quando la lontra torna allo scivolo
+  let impronta = null;
+  function pulisciVetro() {
+    if (!impronta) return;
+    const el = impronta; impronta = null;
+    const op = getComputedStyle(el).opacity;
+    el.getAnimations().forEach((a) => a.cancel());
+    el.animate([{ opacity: op }, { opacity: 0 }], { duration: 700, fill: 'forwards' });
+    const e = effetti.find((q) => q.el === el);
+    if (e) { e.t0 = clock; e.durata = 0.75; }
+  }
+  function bacio(px, py) {
+    let x = px, y = py;
+    if (x === undefined) {
+      labbra.updateWorldMatrix(true, false);
+      labbra.getWorldPosition(proj);
+      proj.project(camera);
+      x = (proj.x * 0.5 + 0.5) * W0; y = (-proj.y * 0.5 + 0.5) * H0;
+    }
+    x = clamp(x, 70, W0 - 70); y = clamp(y, 60, H0 - 90);
+    if (impronta) { impronta.remove(); impronta = null; }
+    fx.querySelectorAll('.smack').forEach((el) => el.remove());
+    if (!reduce) effetto('fiato', '', x, y + 6, 2.3);           // il fiato appanna il vetro
+    impronta = effetto('kiss', LIPS, x, y, Infinity);
+    impronta.style.setProperty('--r', `rotate(${(Math.random() * 16 - 8).toFixed(1)}deg)`);
+    if (SCRITTA) {
+      const sm = effetto('smack', '', clamp(x + Math.min(120, W0 * 0.2), 60, W0 - 60), clamp(y - 70, 40, H0 - 40), reduce ? Infinity : 1.8);
+      sm.textContent = SCRITTA;
+    }
+    if (reduce) return;
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2 + Math.random() * 0.5;
+      const hh = effetto('heart', HEART, x + Math.cos(a) * 44, y + Math.sin(a) * 28, 2.2);
+      hh.style.setProperty('--dx', (Math.cos(a) * 80 + (Math.random() - 0.5) * 30).toFixed(0) + 'px');
+      hh.style.setProperty('--dy', (-70 - Math.random() * 100).toFixed(0) + 'px');
+      hh.style.setProperty('--rot', ((Math.random() - 0.5) * 50).toFixed(0) + 'deg');
+      hh.style.animationDelay = (i * 0.04).toFixed(2) + 's';
+    }
+  }
+
+  /* ---------------- regia: le fasi dell'animazione ---------------- */
+  const salto = (f, h) => ({ y: 4 * h * f * (1 - f), sq: f < 0.12 ? (0.12 - f) * 1.4 : f > 0.88 ? (f - 0.88) * 1.6 : -0.06 });
+  // saltelli da s0 a "to": n salti in tj secondi, a partire da t0
+  function saltella(s0, to, n, t, t0, tj, alt) {
+    const u = clamp((t - t0) / tj, 0, 1);
+    if (u <= 0 || u >= 1) { st.pos.copy(u <= 0 ? s0.pos : to); st.hopY = 0; st.squash = 0; return; }
+    const v = u * n, i = Math.min(n - 1, Math.floor(v)), f = v - i;
+    st.pos.lerpVectors(s0.pos, to, (i + ease(f)) / n);
+    const h = salto(f, alt); st.hopY = h.y; st.squash = h.sq;
+  }
+  const kissPos = new THREE.Vector3(), tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3(), tmpC = new THREE.Vector3();
+  const FASI = {
+    intro: { d: 1.5, run(k, s0, t) {
+      st.modo = 'giu'; st.lying = 0; sup(X_TOP, st.pos); st.yaw = 0; st.armFwd = 0; st.eyes = 1;
+      st.scale = primaVolta ? easeOutBack(clamp(t / 0.5, 0, 1)) : 1;
+      const f = clamp((k - 0.45) / 0.3, 0, 1);
+      const h = f > 0 && f < 1 ? salto(f, 0.28) : { y: 0, sq: 0 };
+      st.hopY = h.y; st.squash = h.sq;
+      st.tilt = Math.sin(k * Math.PI * 2) * 0.1;
+    } },
+    girata: { d: 0.6, run(k, s0) {
+      st.modo = 'giu'; st.scale = 1;
+      st.yaw = lerp(s0.yaw, -Math.PI / 2, ease(clamp(k / 0.7, 0, 1)));
+      st.lying = smooth(0.25, 1, k);
+      st.pos.copy(s0.pos); st.xc = s0.pos.x - 0.45;
+      st.armFwd = smooth(0.3, 1, k); st.tilt = lerp(s0.tilt, 0, k); st.hopY = 0; st.squash = 0; st.look = 0;
+    } },
+    // giù dalla curva: piano in cima, veloce dove Φ è ripida, frena sulla coda sinistra
+    scivolata: { d: 2.8, run(k, s0) {
+      st.lying = 1; st.modo = 'giu';
+      st.xc = lerp(s0.xc, X_STOP, 1 - Math.pow(1 - k * k, 3));
+      sup(st.xc, st.pos); st.armFwd = 1; st.eyes = 1;
+      st.tilt = Math.sin(k * Math.PI * 3) * 0.05;
+    } },
+    arrivo: { d: 0.95, run(k, s0) {
+      st.modo = 'giu'; st.xc = s0.xc;
+      sup(st.xc + 0.63, st.pos);
+      st.lying = 1 - smooth(0.3, 1, k);
+      st.yaw = lerp(-Math.PI / 2, 0.15, smooth(0.45, 1, k));
+      st.armFwd = 1 - smooth(0.3, 0.85, k);
+      st.tilt = 0;
+    } },
+    saltelli: { dyn: true, d: 1.8, prepara(s0) {
+      postoBacio(kissPos);
+      const dist = Math.hypot(kissPos.x - s0.pos.x, kissPos.z - s0.pos.z);
+      this.n = clamp(Math.round(dist / 2.2), 2, 6);
+      this.alt = clamp(0.24 + (dist / this.n) * 0.07, 0.32, 0.55);
+      this.d = this.n * 0.52;
+    }, run(k, s0, t) {
+      st.lying = 0;
+      postoBacio(kissPos);
+      saltella(s0, kissPos, this.n, t, 0, this.d, this.alt);
+      const yawViaggio = Math.atan2(kissPos.x - s0.pos.x, kissPos.z - s0.pos.z);
+      st.yaw = k < 0.8 ? lerp(s0.yaw, yawViaggio, smooth(0, 0.12, k)) : lerp(yawViaggio, 0, smooth(0.8, 1, k));
+      st.look = smooth(0.6, 1, k) * 0.12; st.armFwd = 0;
+    } },
+    prepara: { d: 0.75, run(k) {
+      postoBacio(st.pos); st.yaw = 0; st.hopY = 0; st.squash = 0;
+      st.eyes = 1 - smooth(0.25, 0.6, k); st.pucker = smooth(0.3, 0.85, k);
+      st.blush = smooth(0.2, 1, k) * 0.35; st.look = 0.12 + smooth(0, 1, k) * (0.12 + bacioY() * 0.4); st.tilt = Math.sin(k * Math.PI) * 0.12;
+      st.lean = smooth(0.5, 1, k) * 0.12;
+    } },
+    bacio: { dyn: true, d: 1.0, prepara() {
+      const { vicino, vetro } = distanze();
+      this.tIn = clamp(0.26 + (vicino - vetro) * 0.025, 0.28, 0.5);
+      this.d = this.tIn + 0.14 + 0.5;
+      this.fatto = false;
+    }, run(k, s0, t) {
+      const { vetro } = distanze();
+      postoBacio(tmpA);
+      // dopo il bacio si stacca all'indietro e già un po' di lato, così non resta dietro l'impronta
+      if (t >= this.tIn + 0.14) tmpA.lerp(postoFinale(tmpC), 0.45);
+      sulRaggio(0, bacioY(), vetro, tmpB);
+      tmpB.y -= 1.23; tmpB.z -= 0.46;       // le labbra, non la testa, arrivano sul punto del vetro
+      let f;
+      if (t < this.tIn) f = easeOut(t / this.tIn);
+      else if (t < this.tIn + 0.14) f = 1;
+      else f = 1 - ease(clamp((t - this.tIn - 0.14) / 0.5, 0, 1));
+      st.pos.lerpVectors(tmpA, tmpB, f);
+      st.hopY = 0; st.squash = 0; st.eyes = 0; st.pucker = 1; st.armFwd = f * 0.55; st.lean = 0.12 * (1 - f);
+      st.look = (0.24 + bacioY() * 0.4) * (1 - f);
+      if (!this.fatto && t >= this.tIn) { this.fatto = true; bacio(); }
+    } },
+    // tutta rossa, fa qualche saltello all'indietro e di lato: l'impronta resta in vista
+    dopo: { dyn: true, d: 1.4, prepara(s0) {
+      this.to = postoFinale(V3(0, 0, 0));
+      const dist = Math.hypot(this.to.x - s0.pos.x, this.to.z - s0.pos.z);
+      this.n = clamp(Math.round(dist / 2.2), 1, 3);
+      this.alt = dist < 0.8 ? 0.22 : 0.3;
+      this.t0 = 0.15; this.tj = this.n * 0.42;
+      this.d = this.t0 + this.tj + 0.15;
+    }, run(k, s0, t) {
+      // dagli occhi chiusi del bacio a quelli felici, senza aprirli in mezzo
+      st.armFwd = 0; st.lean = 0; st.eyes = smooth(0.3, 0.45, t);
+      st.pucker = 1 - smooth(0, 0.25, t); st.happy = smooth(0.05, 0.3, t);
+      st.blush = lerp(0.35, 1, smooth(0, 0.5, t));
+      postoFinale(this.to);
+      saltella(s0, this.to, this.n, t, this.t0, this.tj, this.alt);
+      st.yaw = versoCamera(st.pos) * smooth(0.3, 1, k);
+      st.tilt = Math.sin(t * 5) * 0.1 * (1 - k); st.look = 0.12;
+    } },
+    saluto: { d: 1.7, run(k) {
+      postoFinale(st.pos); st.hopY = 0; st.squash = 0; st.yaw = versoCamera(st.pos);
+      st.happy = 1 - smooth(0.55, 0.85, k); st.wave = Math.sin(Math.PI * clamp(k * 1.15, 0, 1));
+      st.blush = 1; st.tilt = Math.sin(k * Math.PI * 3) * 0.1; st.look = 0.12;
+    } },
+    idle: { d: Infinity, run(k, s0, t) {
+      postoFinale(st.pos); st.yaw = versoCamera(st.pos) + Math.sin(t * 0.5) * 0.06;
+      st.wave = 0; st.happy = 0; st.eyes = 1; st.hopY = 0; st.squash = 0;
+      st.blush = lerp(1, 0.5, smooth(0, 6, t));
+      st.tilt = Math.sin(t * 0.9) * 0.08; st.look = 0.1 + Math.sin(t * 0.6) * 0.04;
+    } },
+    // per rivederlo: torna allo scivolo e ci risale sopra
+    ritorno: { dyn: true, d: 1.8, prepara(s0) {
+      this.to = sup(X_STOP + 0.63, V3(0, 0, 0));
+      const dist = Math.hypot(this.to.x - s0.pos.x, this.to.z - s0.pos.z);
+      this.n = clamp(Math.round(dist / 2.4), 2, 6);
+      this.tj = this.n * 0.48;
+      this.d = this.tj + 0.35;
+    }, run(k, s0, t) {
+      st.blush = lerp(s0.blush, 0.2, k); st.happy = 0; st.eyes = 1; st.look = 0; st.tilt = 0;
+      const yawViaggio = Math.atan2(this.to.x - s0.pos.x, this.to.z - s0.pos.z);
+      saltella(s0, this.to, this.n, t, 0, this.tj, 0.4);
+      if (t < this.tj) st.yaw = lerp(s0.yaw, yawViaggio, smooth(0, 0.15, t / this.tj));
+      else st.yaw = lerp(yawViaggio, Math.PI / 2, smooth(0, 1, (t - this.tj) / 0.35));
+    } },
+    sdraio: { d: 0.45, run(k, s0) {
+      st.modo = 'su'; st.yaw = Math.PI / 2;
+      st.xc = s0.pos.x + 0.63; st.pos.copy(s0.pos);
+      st.lying = smooth(0, 1, k); st.armFwd = smooth(0, 1, k) * 0.6;
+    } },
+    sale: { d: 2.7, run(k, s0) {
+      st.modo = 'su'; st.lying = 1;
+      st.xc = lerp(s0.xc, X_TOP + 0.35, ease(k));
+      st.crawl = (st.xc - s0.xc) * 4.2;
+      st.armFwd = 0.6;
+      sup(st.xc - 0.63, st.pos);
+    } },
+    cima: { d: 1.0, run(k, s0) {
+      st.modo = 'su'; st.crawl = 0;
+      st.lying = 1 - smooth(0, 0.6, k);
+      sup(s0.xc - 0.35, st.pos);
+      st.yaw = lerp(Math.PI / 2, 0, smooth(0.35, 1, k));
+      st.armFwd = lerp(0.6, 0, smooth(0, 0.6, k));
+      st.wave = Math.sin(Math.PI * smooth(0.45, 1, k)) * 0.9;
+    } },
+  };
+  const MAIN = ['intro', 'girata', 'scivolata', 'arrivo', 'saltelli', 'prepara', 'bacio', 'dopo', 'saluto', 'idle'];
+  const ANCORA = ['ritorno', 'sdraio', 'sale', 'cima', 'girata', 'scivolata', 'arrivo', 'saltelli', 'prepara', 'bacio', 'dopo', 'saluto', 'idle'];
+  let seq = MAIN, idx = 0, tFase = 0, primaVolta = true;
+  const copia = () => ({ ...st, pos: st.pos.clone() });
+  function entra(i) {
+    idx = i; tFase = 0; s0 = copia();
+    const f = FASI[seq[idx]];
+    if (f.prepara) f.prepara(s0);
+    if (seq[idx] === 'idle') { primaVolta = false; again.hidden = false; }
+  }
+  const again = document.getElementById('again');
+  // il punto del vetro dove arrivano le labbra
+  const bacioSulVetro = () => bacio(W0 / 2, ((1 - bacioY()) / 2) * H0);
+  again.addEventListener('click', () => {
+    if (reduce) { bacioSulVetro(); return; }
+    again.hidden = true;
+    pulisciVetro();
+    seq = ANCORA; entra(0);
+  });
+
+  /* ---------------- ciclo ---------------- */
+  let last = performance.now(), attesa = reduce ? 0 : 0.6;
+  function aggiorna(dt) {
+    clock += dt;
+    if (reduce) FASI.idle.run(0, s0, 0);
+    else if (attesa > 0) attesa -= dt;
+    else {
+      tFase += dt;
+      const f = FASI[seq[idx]];
+      const k = f.d === Infinity ? 0 : clamp(tFase / f.d, 0, 1);
+      f.run(k, s0, tFase);
+      if (tFase >= f.d && idx < seq.length - 1) entra(idx + 1);
+    }
+    applicaPosa(dt);
+    aggiornaEffetti(pausa);
+  }
+  let pausa = false;
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    if (!pausa) aggiorna(dt);
+    aggiornaEtichette(W0, H0);
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+  entra(0);
+  FASI.intro.run(0, s0, 0);
+  if (reduce) {
+    // senza movimento: la lontra è già davanti a te, con il bacio sul vetro
+    seq = MAIN; idx = MAIN.indexOf('idle'); tFase = 0; s0 = copia(); primaVolta = false;
+    st.scale = 1; st.lying = 0;
+    FASI.idle.run(0, s0, 0); applicaPosa(0);
+    requestAnimationFrame(() => { bacioSulVetro(); again.hidden = false; });
+  }
+  document.getElementById('loading').hidden = true;
+  requestAnimationFrame((t) => { last = t; requestAnimationFrame(frame); });
+  window.lontra = {
+    st, FASI, get fase() { return seq[idx]; }, get tFase() { return tFase; }, get S() { return S; }, get clock() { return clock; },
+    set pausa(v) { pausa = v; }, avanza: (sec) => { for (let t = 0; t < sec; t += 1 / 60) aggiorna(1 / 60); },
+  };
+}
+
+(async () => {
+  let THREE;
+  try { THREE = await import(THREE_URL); }
+  catch (e) { mostraErrore('Non riesco a scaricare three.js: serve una connessione a internet.'); return; }
+  try { avvia(THREE); }
+  catch (e) { console.error(e); mostraErrore('La lontra è inciampata: ricarica la pagina.'); }
+})();
+</script>
+</body>
+</html>
